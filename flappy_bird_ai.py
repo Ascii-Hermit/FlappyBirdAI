@@ -4,6 +4,8 @@ import os
 import neat
 pygame.font.init()  # initialize font
 
+
+#loling
 WIN_WIDTH = 600
 WIN_HEIGHT = 800
 FLOOR = 730
