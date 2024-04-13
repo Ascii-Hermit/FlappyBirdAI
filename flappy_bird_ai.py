@@ -10,7 +10,8 @@ WIN_HEIGHT = 800
 FLOOR = 730 # this is the maximum legal height of the bird
 FONT = pygame.font.SysFont("arial", 50)
 
-DRAW_LINES = False # this draws lines to see what each agent can see
+DRAW_LINES = True # this draws lines to see what each agent can see
+MODS_ON = True
 
 WIN = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
 pygame.display.set_caption("Flappy Bird")
@@ -28,7 +29,6 @@ rather the pipes and the base move towards it. The bird can either jump or choos
 pipes or the base/ground the game is reset.
 
 '''
-
 
 class Bird:
    #this is similar to the sprite class
@@ -61,7 +61,7 @@ class Bird:
         self.height = self.y
 
     def move(self):
-        
+         
         self.tick_count += 1
 
         # for downward acceleration
@@ -172,8 +172,71 @@ class Pipe:
 
         return False
 
+class Pipe_mod:
+    
+    GAP = 200 #this is the gap of the pipes
+    VEL_TOP = 5 #speed of the pipes
+    VEL_BOTTTOM = 7
+    def __init__(self, x):
+        
+        self.x_top = x #we set this as 700, which is out of the game window as we want the birds to stabilize themselves upon creation
+        self.x_bottom = x
+        self.height = 0
+
+        # where the top and bottom of the pipe is , this is the x axis of the pipes which must be same
+        self.top = 0
+        self.bottom = 0
+
+        self.PIPE_TOP = pygame.transform.flip(pipe_img, False, True)
+        self.PIPE_BOTTOM = pipe_img
+
+        self.passed = False #whether the bird has passed through the pipe or not
+
+        self.set_height()
+
+    def set_height(self):
+       
+       #sets the height of the pipes randomly
+        self.height = randrange(50, 450)
+        self.top = self.height - self.PIPE_TOP.get_height()
+        self.bottom = self.height + self.GAP
+
+    def move(self):
+        #moves the pipe
+        self.x_top -= self.VEL_TOP
+        self.x_bottom -= self.VEL_BOTTTOM
+
+    def draw(self, win):
+        
+        # draw top pipes
+        win.blit(self.PIPE_TOP, (self.x_top, self.top))
+        # draw bottom pipe
+        win.blit(self.PIPE_BOTTOM, (self.x_bottom, self.bottom))
+
+
+    def collide(self,bird,base):
+       
+        bird_mask = bird.get_mask()
+        top_mask = pygame.mask.from_surface(self.PIPE_TOP)
+        bottom_mask = pygame.mask.from_surface(self.PIPE_BOTTOM)
+        base_mask = pygame.mask.from_surface(base.IMG)
+
+
+        ba_offset = (bird.x,730-round(bird.y))
+        top_offset = (self.x_top - bird.x, self.top - round(bird.y)) #round is used to round off a value
+        bottom_offset = (self.x_bottom - bird.x, self.bottom - round(bird.y))
+
+        b_point = bird_mask.overlap(bottom_mask, bottom_offset) #check if bird collides wittom pipe
+        t_point = bird_mask.overlap(top_mask,top_offset) #check if bird collides wittom pipe
+        ba_point = bird_mask.overlap(base_mask,ba_offset)
+
+        if b_point or t_point or ba_point:
+            return True
+
+        return False
+
 class Base:
-    #there are 2 images that are played one after the other giving the illusion of infinite base
+    # there are 2 images that are played one after the other giving the illusion of infinite base
    
     VEL = 5 #same as the pipes
     WIDTH = base_img.get_width()
@@ -182,7 +245,7 @@ class Base:
     def __init__(self, y):
         
         self.y = y
-        self.x1 = 0 #one for 1st pic and one for the one after that pic
+        self.x1 = 0 # one for 1st pic and one for the one after that pic
         self.x2 = self.WIDTH
 
     def move(self):
@@ -223,8 +286,12 @@ def draw_window(win, birds, pipes, base, score, gen, pipe_ind):
         if DRAW_LINES:
             try:
                 #center of bird to center of pipe
-                pygame.draw.line(win, (255,0,0), (bird.x+bird.img.get_width()/2, bird.y + bird.img.get_height()/2), (pipes[pipe_ind].x + pipes[pipe_ind].PIPE_TOP.get_width()/2, pipes[pipe_ind].height), 5)
-                pygame.draw.line(win, (255,0,0), (bird.x+bird.img.get_width()/2, bird.y + bird.img.get_height()/2), (pipes[pipe_ind].x + pipes[pipe_ind].PIPE_BOTTOM.get_width()/2, pipes[pipe_ind].bottom), 5)
+                if MODS_ON:
+                    pygame.draw.line(win, (0,255,0), (bird.x+bird.img.get_width()/2, bird.y + bird.img.get_height()/2), (pipes[pipe_ind].x_top + pipes[pipe_ind].PIPE_TOP.get_width()/2, pipes[pipe_ind].height), 5)
+                    pygame.draw.line(win, (0,255,0), (bird.x+bird.img.get_width()/2, bird.y + bird.img.get_height()/2), (pipes[pipe_ind].x_bottom + pipes[pipe_ind].PIPE_BOTTOM.get_width()/2, pipes[pipe_ind].bottom), 5)
+                else:
+                    pygame.draw.line(win, (0,255,0), (bird.x+bird.img.get_width()/2, bird.y + bird.img.get_height()/2), (pipes[pipe_ind].x + pipes[pipe_ind].PIPE_TOP.get_width()/2, pipes[pipe_ind].height), 5)
+                    pygame.draw.line(win, (0,255,0), (bird.x+bird.img.get_width()/2, bird.y + bird.img.get_height()/2), (pipes[pipe_ind].x + pipes[pipe_ind].PIPE_BOTTOM.get_width()/2, pipes[pipe_ind].bottom), 5)
             except:
                 pass
 
@@ -268,7 +335,10 @@ def eval_genomes(genomes, config):
         ge.append(genome)
 
     base = Base(FLOOR)
-    pipes = [Pipe(700)]
+    if MODS_ON:
+        pipes = [Pipe_mod(700)]
+    else:
+        pipes = [Pipe(700)]
     score = 0
 
     #clock controlls the speed of the game
@@ -288,8 +358,13 @@ def eval_genomes(genomes, config):
 
         # determine whether to use the first or second as list output may be out of range
         pipe_ind = 0
-        if len(pipes) > 1 and birds[0].x > pipes[0].x + pipes[0].PIPE_TOP.get_width(): 
-            pipe_ind = 1            
+        if MODS_ON:
+            if len(pipes) > 1 and birds[0].x > pipes[0].x_top + pipes[0].PIPE_TOP.get_width(): 
+                pipe_ind = 1 
+        else:
+            if len(pipes) > 1 and birds[0].x > pipes[0].x + pipes[0].PIPE_TOP.get_width(): 
+                pipe_ind = 1 
+
 
         # give each bird a fitness of 0.1 for each frame it stays alive                                                     
         for x, bird in enumerate(birds):  
@@ -315,19 +390,30 @@ def eval_genomes(genomes, config):
                     nets.pop(birds.index(bird))
                     ge.pop(birds.index(bird))
                     birds.pop(birds.index(bird))
-
-            if pipe.x + pipe.PIPE_TOP.get_width() < 0:
-                rem.append(pipe)
-
-            if not pipe.passed and pipe.x < bird.x:
-                pipe.passed = True
-                add_pipe = True
+            if MODS_ON:
+                if pipe.x_top + pipe.PIPE_TOP.get_width() < 0:
+                    rem.append(pipe)
+            else:
+                if pipe.x + pipe.PIPE_TOP.get_width() < 0:
+                    rem.append(pipe)
+                
+            if MODS_ON:
+                if not pipe.passed and pipe.x_top < bird.x:
+                    pipe.passed = True
+                    add_pipe = True
+            else:
+                if not pipe.passed and pipe.x < bird.x:
+                    pipe.passed = True
+                    add_pipe = True
 
         if add_pipe:
             score += 1
             for genome in ge:
                 genome.fitness += 5
-            pipes.append(Pipe(WIN_WIDTH))
+            if MODS_ON:
+                pipes.append(Pipe_mod(WIN_WIDTH))
+            else:
+                pipes.append(Pipe(WIN_WIDTH))
 
         for r in rem:
             pipes.remove(r)
