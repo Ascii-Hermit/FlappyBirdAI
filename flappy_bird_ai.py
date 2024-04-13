@@ -10,8 +10,8 @@ WIN_HEIGHT = 800
 FLOOR = 730 # this is the maximum legal height of the bird
 FONT = pygame.font.SysFont("arial", 50)
 
-DRAW_LINES = True # this draws lines to see what each agent can see
-MODS_ON = True
+DRAW_LINES = False # this draws lines to see what each agent can see
+MODS_ON = False
 
 WIN = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
 pygame.display.set_caption("Flappy Bird")
